@@ -8,8 +8,8 @@ proxy:
 
 # Global Server Timeouts (Slowloris Prevention)
 timeouts:
-  headers_timeout_ms: 10000   # 10 seconds to receive headers
-  request_timeout_ms: 20000   # 20 seconds max request execution
+  headers_timeout_ms: 10000 # 10 seconds to receive headers
+  request_timeout_ms: 20000 # 20 seconds max request execution
   keep_alive_timeout_ms: 5000 # 5 seconds keep-alive idle cap
 
 # Body Parser Caps (Buffer Overflow & Memory Exhaustion Prevention)
@@ -43,7 +43,7 @@ rate_limiting:
   # Tier 3: Exam Submission & Autosave Limiter (Burst / Resource Contention Defense)
   tier_3_exam_submission:
     window_ms: 10000 # 10 seconds
-    max_requests: 5  # Allow max 1 request every 2s on average
+    max_requests: 5 # Allow max 1 request every 2s on average
     message: "Answer submission frequency limit exceeded. Please wait a moment before sending again."
     standard_headers: true
     legacy_headers: false
@@ -56,6 +56,6 @@ rate_limiting:
 # Database Query Safety Constraints
 database_guards:
   max_query_limit: 100 # Maximum allowed page size in any list endpoint
-  max_pool_size: 50    # Maximum concurrent Mongoose pool connections
-  min_pool_size: 5     # Minimum warm connections
+  max_pool_size: 50 # Maximum concurrent Mongoose pool connections
+  min_pool_size: 5 # Minimum warm connections
   server_selection_timeout_ms: 5000

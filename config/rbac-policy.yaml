@@ -30,6 +30,10 @@ permissions:
         methods: ["GET", "POST"]
       - path: "^/subjects/[a-fA-F0-9]+$"
         methods: ["GET"]
+      - path: "^/tests/available$"
+        methods: ["GET"]
+      - path: "^/tests/[a-fA-F0-9]+/enroll$"
+        methods: ["POST"]
       - path: "^/tests/[a-fA-F0-9]+/start$"
         methods: ["POST"]
       - path: "^/tests/[a-fA-F0-9]+/session(/.*)?$"

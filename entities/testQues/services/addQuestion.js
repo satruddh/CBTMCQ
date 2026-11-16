@@ -1,1 +1,0 @@
-const questionModel = require("../../../database/models/testQues")

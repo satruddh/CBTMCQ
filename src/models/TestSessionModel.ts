@@ -1,12 +1,19 @@
-import { BaseObject, IBaseObject, List } from "../core/BaseObject";
+import { BaseObject, List } from "../core/BaseObject";
 
 export class ShuffledQuestion extends BaseObject<ShuffledQuestion> {
+  public testQuestionId: string = "";
   public questionId: string = "";
   public sequenceNumber: number = 0;
   public optionOrder: Array<string> = new Array<string>();
 
-  constructor(questionId: string = "", sequenceNumber: number = 0, optionOrder: Array<string> = new Array<string>()) {
+  constructor(
+    testQuestionId: string = "",
+    questionId: string = "",
+    sequenceNumber: number = 0,
+    optionOrder: Array<string> = new Array<string>()
+  ) {
     super();
+    this.testQuestionId = testQuestionId;
     this.questionId = questionId;
     this.sequenceNumber = sequenceNumber;
     this.optionOrder = optionOrder;
@@ -18,11 +25,15 @@ export class ShuffledQuestion extends BaseObject<ShuffledQuestion> {
   }
 
   public override toString(): string {
-    return `ShuffledQuestion{ questionId: "${this.questionId}", sequenceNumber: ${this.sequenceNumber}, optionOrder: [${this.optionOrder.join(", ")}] }`;
+    return `ShuffledQuestion{ testQuestionId: "${this.testQuestionId}", questionId: "${this.questionId}", sequenceNumber: ${this.sequenceNumber}, optionOrder: [${this.optionOrder.join(", ")}] }`;
   }
 
   public override equals(other: ShuffledQuestion): boolean {
-    if (this.questionId !== other.questionId || this.sequenceNumber !== other.sequenceNumber) {
+    if (
+      this.testQuestionId !== other.testQuestionId ||
+      this.questionId !== other.questionId ||
+      this.sequenceNumber !== other.sequenceNumber
+    ) {
       return false;
     }
     if (this.optionOrder.length !== other.optionOrder.length) {
@@ -37,7 +48,12 @@ export class ShuffledQuestion extends BaseObject<ShuffledQuestion> {
   }
 
   public override isEmpty(): boolean {
-    return this.questionId === "" && this.sequenceNumber === 0 && this.optionOrder.length === 0;
+    return (
+      this.testQuestionId === "" &&
+      this.questionId === "" &&
+      this.sequenceNumber === 0 &&
+      this.optionOrder.length === 0
+    );
   }
 }
 

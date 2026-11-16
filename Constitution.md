@@ -57,6 +57,7 @@ Every feature, route, and entity in `CBTMCQ` must be developed, tested, and veri
 ```
 
 ### Rule SDD-001: The OpenAPI Single Source of Truth
+
 - All API endpoints must be fully specified in `specs/openapi.yaml` prior to backend coding.
 - The specification must include:
   - Exact URL path and HTTP method (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`).
@@ -65,6 +66,7 @@ Every feature, route, and entity in `CBTMCQ` must be developed, tested, and veri
   - Required security scheme (`cookieAuth` or `bearerAuth`).
 
 ### Rule SDD-002: Testable Endpoint Verification
+
 - Any newly proposed or modified API endpoint must be testable against its OpenAPI schema.
 - Automated API test suites (e.g., Supertest + OpenAPI Validator / Prism) must validate that:
   1. The API refuses invalid payloads matching `400 Bad Request`.
@@ -110,13 +112,16 @@ Access control in `CBTMCQ` is decoupled from business logic and enforced at the 
 ```
 
 ### Rule RBAC-001: Prohibition of Scattered Role Checks
+
 - Controllers and individual route definitions **must never** contain hardcoded role validation conditionals (e.g., `if (req.user.role !== 'ADMIN')`).
 - All authorization decisions must be mediated exclusively by the global RBAC guard middleware.
 
 ### Rule RBAC-002: Declarative Policy File (`config/rbac-policy.yaml`)
+
 Access policies are declared in `config/rbac-policy.yaml`. The schema defines roles, endpoint patterns, allowed HTTP methods, and public exclusions.
 
 #### Canonical RBAC Policy Schema Example:
+
 ```yaml
 version: "1.0"
 default_policy: "DENY" # Fail-closed security architecture
@@ -174,7 +179,9 @@ permissions:
 ```
 
 ### Rule RBAC-003: Single Guard Middleware Contract
+
 The centralized RBAC middleware (`middlewares/rbacGuard.js`) must strictly adhere to the following evaluation sequence:
+
 1. **Public Route Evaluation**: Check if the requested `req.path` and `req.method` match `public_routes`. If matched, proceed immediately via `next()`.
 2. **Authentication Verification**: If not public, verify `req.session.isAuthenticated` or `req.user`. If absent, immediately terminate with `401 Unauthorized`.
 3. **Role & Method Resolution**: Retrieve the user's role (`ADMIN`, `FACULTY`, `STUDENT`). Check for explicit allow rules matching both the URL pattern (regex) and the HTTP method (`req.method`).
@@ -186,10 +193,12 @@ The centralized RBAC middleware (`middlewares/rbacGuard.js`) must strictly adher
 ## 4. Article III: Repository Scope & System Boundaries
 
 ### Rule BND-001: Backend-Only Mandate
+
 - The `CBTMCQ` repository contains only backend source code: Express application, Mongoose database models, entity controllers, services, specifications, and automated test runners.
 - Frontend UI development, client assets, and React component code reside exclusively in `/Users/satruddh/Documents/cbtmcq-ui`.
 
 ### Rule BND-002: API & Network Topology
+
 - **API Runtime Port**: Configurable via `PORT` in `.env`, defaults to `5001`.
 - **CORS Allowed Origins**: `http://localhost:3000` (development client) with `credentials: true`.
 - **Cross-Domain Communication**: All communications between `cbtmcq-ui` and `CBTMCQ` must occur over HTTP REST endpoints documented in `specs/openapi.yaml`.
@@ -222,6 +231,7 @@ CBTMCQ/
 ```
 
 ### Architectural Guardrails:
+
 1. **Routes**: Responsible strictly for attaching endpoints to controller methods. Must not execute business logic.
 2. **Controllers**: Responsible for parsing request payloads, delegating to services, and returning standard JSON envelopes with exact HTTP status codes. Controllers do not run raw Mongoose queries.
 3. **Services**: Reusable, pure-logic functions handling database operations and business computations. Services must not accept or touch Express `req` or `res` objects.
@@ -231,24 +241,26 @@ CBTMCQ/
 
 ## 6. Article V: Domain Entity Specifications
 
-| Entity | Primary Responsibilities | Data Key Fields | Roles with Write Access |
-| :--- | :--- | :--- | :--- |
-| **`User`** | Identity, authentication, role governance | `username`, `email`, `role`, `academicYear`, `password` (bcrypt) | `ADMIN`, `PUBLIC` (registration) |
-| **`Subject`** | Academic course management | `subjectCode`, `subjectName`, `academicYear`, `credits`, `createdBy` | `ADMIN`, `FACULTY` |
-| **`Question`** | Multi-type question bank (`MCQ`, `MSQ`, `True/False`) | `subjectId`, `questionText`, `questionType`, `options`, `difficulty.level`, `difficulty.weight` | `ADMIN`, `FACULTY` |
-| **`Test`** | Examination configuration & scheduling | `testName`, `academicYear`, `subjects`, `testType`, `duration`, `totalMarks`, `schedule` | `ADMIN`, `FACULTY` |
-| **`TestQuestion`** | Mapping questions to tests with weights | `testId`, `questionId`, `assignedMarks`, `sequenceNumber`, `section` | `ADMIN`, `FACULTY` |
-| **`UserResponse`** | Candidate real-time answer submissions | `userId`, `testQuestionId`, `selectedOptionIds`, `status`, `timeSpent` | `STUDENT` |
-| **`TestResult`** | Final test grading and performance analytics | `userId`, `testId`, `totalMarksObtained`, `percentage`, `subjectWiseBreakdown`, `difficultyBreakdown` | `SYSTEM` (Automated Engine) |
+| Entity             | Primary Responsibilities                              | Data Key Fields                                                                                       | Roles with Write Access          |
+| :----------------- | :---------------------------------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------- |
+| **`User`**         | Identity, authentication, role governance             | `username`, `email`, `role`, `academicYear`, `password` (bcrypt)                                      | `ADMIN`, `PUBLIC` (registration) |
+| **`Subject`**      | Academic course management                            | `subjectCode`, `subjectName`, `academicYear`, `credits`, `createdBy`                                  | `ADMIN`, `FACULTY`               |
+| **`Question`**     | Multi-type question bank (`MCQ`, `MSQ`, `True/False`) | `subjectId`, `questionText`, `questionType`, `options`, `difficulty.level`, `difficulty.weight`       | `ADMIN`, `FACULTY`               |
+| **`Test`**         | Examination configuration & scheduling                | `testName`, `academicYear`, `subjects`, `testType`, `duration`, `totalMarks`, `schedule`              | `ADMIN`, `FACULTY`               |
+| **`TestQuestion`** | Mapping questions to tests with weights               | `testId`, `questionId`, `assignedMarks`, `sequenceNumber`, `section`                                  | `ADMIN`, `FACULTY`               |
+| **`UserResponse`** | Candidate real-time answer submissions                | `userId`, `testQuestionId`, `selectedOptionIds`, `status`, `timeSpent`                                | `STUDENT`                        |
+| **`TestResult`**   | Final test grading and performance analytics          | `userId`, `testId`, `totalMarksObtained`, `percentage`, `subjectWiseBreakdown`, `difficultyBreakdown` | `SYSTEM` (Automated Engine)      |
 
 ---
 
 ## 7. Article VI: OpenAPI Specification Standard
 
 ### Standard API Response Envelope
+
 All API endpoints generated in accordance with `specs/openapi.yaml` must return responses conforming to the canonical envelope:
 
 #### Success Envelope (`200 OK`, `201 Created`):
+
 ```json
 {
   "success": true,
@@ -258,6 +270,7 @@ All API endpoints generated in accordance with `specs/openapi.yaml` must return 
 ```
 
 #### Error Envelope (`400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `500 Internal Server Error`):
+
 ```json
 {
   "success": false,
@@ -287,10 +300,12 @@ All Mongoose schemas in `database/models/` must adhere to rigorous data governan
 ```
 
 ### Rule DB-001: Strict Typing & Extra Field Prohibition
+
 - Every schema must explicitly enable `timestamps: true` (`createdAt`, `updatedAt`).
 - Schemas must enforce `strict: true` (or `strict: 'throw'`) to disallow unauthorized, unmodeled properties from being persisted (preventing mass assignment vulnerabilities).
 
 ### Rule DB-002: Field Sanitization & Custom Validators
+
 - **String Sanitization**: `trim: true` is mandatory on all String fields.
 - **Enums**: All enums must be explicit and uppercase (e.g., `['ADMIN', 'FACULTY', 'STUDENT']`, `['MCQ', 'MSQ', 'TRUE_FALSE']`).
 - **Input Validation**: Use standard validators (e.g., `validator.isEmail` on `User.email`).
@@ -299,7 +314,9 @@ All Mongoose schemas in `database/models/` must adhere to rigorous data governan
   - At least one option in `Question.options` must have `isCorrect: true`.
 
 ### Rule DB-003: Immutability Enforcements
+
 To guarantee academic auditability and prevent historical data corruption, critical relationship and audit fields must be declared with `immutable: true`:
+
 - `User.username`, `User.role` (once registered, role escalations must use administrative workflows).
 - `Subject.subjectCode`, `Subject.createdBy`.
 - `Test.createdBy`.
@@ -308,7 +325,9 @@ To guarantee academic auditability and prevent historical data corruption, criti
 - `TestResult.userId`, `TestResult.testId`, `TestResult.startedAt`.
 
 ### Rule DB-004: Compound Uniqueness & Index Governance
+
 Every collection must declare explicit indexes to guarantee data consistency and query performance:
+
 - **`TestResult`**: `{ userId: 1, testId: 1 }` with `{ unique: true }` (prevents duplicate test completions).
 - **`UserResponse`**: `{ userId: 1, testQuestionId: 1 }` with `{ unique: true }` (ensures idempotent response updates).
 - **`TestQuestion`**: `{ testId: 1, questionId: 1 }` with `{ unique: true }` and `{ testId: 1, sequenceNumber: 1 }` with `{ unique: true }` (ensures unique ordering and no duplicate questions per test).
@@ -316,15 +335,18 @@ Every collection must declare explicit indexes to guarantee data consistency and
 - **`User`**: `{ username: 1 }` and `{ email: 1 }` with `{ unique: true }`.
 
 ### Rule DB-005: Lifecycle Hooks (Pre/Post Middleware)
+
 - **Automatic Password Hashing**: `userSchema.pre('save', ...)` must automatically hash plain-text passwords using `bcrypt` if modified.
 - **Dynamic Field Computations**: Calculate derived weights (e.g., `Question.difficulty.weight`) automatically via pre-save hooks rather than requiring manual controller calculations.
 - **Referential Integrity Guards**: Pre-remove hooks must prevent deleting parent documents (e.g., `Subject`) if active dependent records (`Test`, `Question`) exist.
 
 ### Rule DB-006: Serialization & Data Privacy (`toJSON` Transforms)
+
 - Sensitive fields (`password`, `resetPasswordToken`, `__v`) must never be leaked through `res.json()`.
 - Every schema that stores sensitive or internal metadata must define a `toJSON` transform:
+
 ```javascript
-userSchema.set('toJSON', {
+userSchema.set("toJSON", {
   transform: (doc, ret) => {
     delete ret.password;
     delete ret.resetPasswordToken;
@@ -335,6 +357,7 @@ userSchema.set('toJSON', {
 ```
 
 ### Rule DB-007: Spec-to-Schema Synchronization
+
 Every Mongoose model must maintain exact property name, type, and constraint parity with its corresponding schema defined in `specs/openapi.yaml#/components/schemas`.
 
 ---
@@ -358,7 +381,9 @@ To safeguard university testing integrity and prevent service outages during pea
 ```
 
 ### Rule DDOS-001: Multi-Tier Perimeter Rate Limiting
+
 All rate limiting is managed at the perimeter using sliding-window rate limiters configured via `config/ddos-policy.yaml`:
+
 1. **Tier 1 (Global Perimeter Gate)**:
    - Limits aggregate traffic to **300 requests per 15 minutes** per client IP.
    - Prevents generic site-scraping, denial-of-service floods, and bot scanning.
@@ -378,14 +403,16 @@ All rate limiting is managed at the perimeter using sliding-window rate limiters
      - `RateLimit-Reset: <timestamp>`
 
 ### Rule DDOS-002: Request Payload & Buffer Overflow Bounds
+
 - The Express body parser must enforce strict payload caps:
   ```javascript
-  app.use(express.json({ limit: '50kb' }));
-  app.use(express.urlencoded({ limit: '50kb', extended: true }));
+  app.use(express.json({ limit: "50kb" }));
+  app.use(express.urlencoded({ limit: "50kb", extended: true }));
   ```
 - Any request exceeding `50kb` must be aborted immediately by middleware with `413 Payload Too Large`, preventing memory exhaustion and zip-bomb style JSON payload attacks.
 
 ### Rule DDOS-003: Slowloris & Socket Starvation Prevention
+
 - The underlying HTTP server must configure strict socket timeouts to prevent Slowloris attacks (attackers slowly trickling bytes to keep TCP sockets open and exhaust server worker pools):
   ```javascript
   const server = app.listen(port, ...);
@@ -395,25 +422,28 @@ All rate limiting is managed at the perimeter using sliding-window rate limiters
   ```
 
 ### Rule DDOS-004: Query Complexity & ReDoS Defense
+
 - **Unbounded Query Prohibition**: No service or controller may issue an unbounded `.find({})` query.
 - **Strict Pagination Cap**: All list endpoints must enforce a mandatory maximum limit of **100 documents per query** (`Math.min(limit, 100)`).
 - **Regular Expression DoS (ReDoS)**: User-provided search strings must never be passed unescaped into `new RegExp(query)`. They must be sanitized using a regex escape utility to prevent catastrophic regex backtracking.
 
 ### Rule DDOS-005: Database Connection Pool Throttling
+
 - The Mongoose connection pool must be explicitly bounded to prevent connection starvation under sudden traffic surges:
   ```javascript
   mongoose.connect(uri, {
-    maxPoolSize: 50,                  // Max active concurrent connections
-    minPoolSize: 5,                   // Maintain warm connections
-    serverSelectionTimeoutMS: 5000,   // Fail fast after 5s rather than hang
-    socketTimeoutMS: 30000            // Terminate dead queries after 30s
+    maxPoolSize: 50, // Max active concurrent connections
+    minPoolSize: 5, // Maintain warm connections
+    serverSelectionTimeoutMS: 5000, // Fail fast after 5s rather than hang
+    socketTimeoutMS: 30000 // Terminate dead queries after 30s
   });
   ```
 
 ### Rule DDOS-006: Reverse Proxy & Trusted Proxy Header Standards
+
 - To ensure client IP addresses cannot be spoofed via forged `X-Forwarded-For` HTTP headers, Express must be configured with:
   ```javascript
-  app.set('trust proxy', 1); // Trust first hop reverse proxy (Cloudflare / Nginx / AWS ALB)
+  app.set("trust proxy", 1); // Trust first hop reverse proxy (Cloudflare / Nginx / AWS ALB)
   ```
 - Rate limiters must extract client IPs using the verified proxy-resolved `req.ip`.
 
@@ -422,6 +452,7 @@ All rate limiting is managed at the perimeter using sliding-window rate limiters
 ## 10. Article IX: Queryable Flat Schema Views & Aggregation Engine (CQRS Read Layer)
 
 ### 10.1 Feasibility Assessment
+
 **Status: Highly Feasible & Architecturally Sound.**  
 In an academic testing system, the UI frequently requires composite, denormalized data (e.g., student name + test metadata + subject code + scores + question stats). Forcing the UI to execute multiple REST roundtrips causes "chatty" network latency, client-side data stitching overhead, and increased server load.
 
@@ -462,7 +493,9 @@ To resolve this, `CBTMCQ` adopts a **REST-Native Queryable Flat View Engine** bu
 ```
 
 ### Rule VIEW-001: REST Parameter & Query Protocol
+
 All flat view calls shall conform to standard REST query syntax:
+
 - **`select`**: Comma-delimited list of fields to project (e.g., `?select=studentName,score,subjectCode`).
 - **`orderBy`**: Field and direction formatted as `<field>:<asc|desc>` (e.g., `?orderBy=score:desc`).
 - **`limit`**: Positive integer bounded between `1` and `100` (defaults to `20`).
@@ -470,23 +503,29 @@ All flat view calls shall conform to standard REST query syntax:
 - **`filter`**: URL-encoded key-value filter parameters scoped to indexed fields (e.g., `?academicYear=2&testType=MIDTERM`).
 
 ### Rule VIEW-002: Whitelist Security & Projection Injection Prevention
+
 To prevent arbitrary query injection, unauthorized data exfiltration, or denial of service:
+
 1. **Strict Field Whitelist**: Each view must be registered in the View Registry with an explicit list of queryable, sortable, and selectable fields.
 2. **Denial of Undeclared Fields**: Any request attempting to `select` or `orderBy` a field not present in the view's whitelist must be rejected immediately with `400 Bad Request`.
 3. **Hard Exclusion of Sensitive Fields**: Fields containing credentials (`password`, `resetPasswordToken`), private keys, or system internals (`__v`) are permanently excluded from all view projections.
 4. **No Raw Query Evaluation**: Query strings must never be converted directly into raw MongoDB queries or `$where` JavaScript evaluations.
 
 ### Rule VIEW-003: Registered Canonical Views
+
 The system pre-registers the following optimized flat schema views:
 
-| View Name | Source Collections Joined | Purpose & Flattened Projection | Allowed Roles |
-| :--- | :--- | :--- | :--- |
-| **`test-sessions`** | `Test` + `Subject` + `User` (Faculty) | Active exam roster, subject details, duration, passing score, instructor info | `STUDENT`, `FACULTY` |
-| **`student-results`** | `TestResult` + `Test` + `User` (Student) + `Subject` | Comprehensive scorecards, percentage, student info, subject breakdown | `STUDENT` (self), `FACULTY`, `ADMIN` |
-| **`question-bank-overview`**| `Question` + `Subject` + `User` (Author) | Question text, options count, difficulty, subject name, usage history | `FACULTY`, `ADMIN` |
-| **`exam-monitoring`** | `UserResponse` + `TestQuestion` + `User` | Real-time candidate exam progression, time spent, attempted counts | `FACULTY`, `ADMIN` |
+| View Name                    | Source Collections Joined                            | Purpose & Flattened Projection                                                | Allowed Roles                        |
+| :--------------------------- | :--------------------------------------------------- | :---------------------------------------------------------------------------- | :----------------------------------- |
+| **`test-sessions`**          | `Test` + `Subject` + `User` (Faculty)                | Active exam roster, subject details, duration, passing score, instructor info | `STUDENT`, `FACULTY`                 |
+| **`student-results`**        | `TestResult` + `Test` + `User` (Student) + `Subject` | Comprehensive scorecards, percentage, student info, subject breakdown         | `STUDENT` (self), `FACULTY`, `ADMIN` |
+| **`question-bank-overview`** | `Question` + `Subject` + `User` (Author)             | Question text, options count, difficulty, subject name, usage history         | `FACULTY`, `ADMIN`                   |
+| **`exam-monitoring`**        | `UserResponse` + `TestQuestion` + `User`             | Real-time candidate exam progression, time spent, attempted counts            | `FACULTY`, `ADMIN`                   |
+| **`test-leaderboard`**       | `TestResult` + `User` (Student) + `Test`             | Dense-ranked candidate scorecards, percentages, and completion rankings       | `STUDENT`, `FACULTY`, `ADMIN`        |
+| **`test-leaderboard`**       | `TestResult` + `User` (Student) + `Test`             | Dense-ranked candidate scorecards, percentages, and completion rankings       | `STUDENT`, `FACULTY`, `ADMIN`        |
 
 ### Rule VIEW-004: Performance & Indexing Requirements
+
 - **Match-First Principle**: Every view aggregation pipeline must begin with an indexed `$match` stage (e.g., `{ userId: req.user._id }` or `{ testId: requestedTestId }`) before executing `$lookup` joins, preventing full-collection scan joins.
 - **Cross-Database Joins**: Where collections reside across separate databases or sharded clusters, `$lookup` stages must leverage MongoDB 5.1+ foreign database references or dedicated materialized read models.
 
@@ -535,6 +574,7 @@ The Live Test engine is the core mission-critical module of `CBTMCQ`. Because te
 ```
 
 ### Rule LIVE-001: Zero-Knowledge Client Projection (Anti-Cheat Standard)
+
 - While a test session is `SCHEDULED` or `IN_PROGRESS`, the backend **must never** expose `isCorrect`, option explanations, or answer keys in any API response.
 - Question options sent to the client must only contain:
   ```json
@@ -546,6 +586,7 @@ The Live Test engine is the core mission-critical module of `CBTMCQ`. Because te
 - Any controller or service violating this rule and transmitting answer keys to active test-takers constitutes a critical security vulnerability.
 
 ### Rule LIVE-002: Persisted Random Shuffling (Per-Student Unique & Reconnect-Safe)
+
 - To prevent student collusion and screen peeking, each test taker receives a distinct, randomized arrangement of:
   1. **Question sequence order**.
   2. **Option sequence order** for every question.
@@ -556,11 +597,12 @@ The Live Test engine is the core mission-critical module of `CBTMCQ`. Because te
       questionId: ObjectId("..."),
       optionOrder: [ObjectId("optB"), ObjectId("optA"), ObjectId("optD"), ObjectId("optC")]
     }
-  ]
+  ];
   ```
 - **Disconnection Resilience**: If a student refreshes their browser, loses power, or switches network connections, they must resume with the exact same question order and option layout, with all previously saved answers intact.
 
 ### Rule LIVE-003: Server-Authoritative Time-Locking
+
 - The client-side countdown timer is purely a visual UI affordance.
 - **Clock Authority**: The server alone governs session validity and remaining duration:
   $$\text{sessionExpiresAt} = \min(\text{startedAt} + \text{test.duration} \times 60000, \text{test.schedule.endTime})$$
@@ -569,6 +611,7 @@ The Live Test engine is the core mission-critical module of `CBTMCQ`. Because te
 - **Enforced Auto-Expiry**: Any submission received after $\text{sessionExpiresAt} + 5000\text{ms}$ (network transit grace) is rejected with `403 Forbidden` (`SESSION_EXPIRED`), and the session is transitioned to `TIMED_OUT`.
 
 ### Rule LIVE-004: Session State Machine & Concurrency Control
+
 Each test attempt is governed by an explicit `TestSession` lifecycle:
 
 $$\text{SCHEDULED} \longrightarrow \text{IN\_PROGRESS} \longrightarrow \begin{cases} \text{SUBMITTED} \\ \text{TIMED\_OUT} \end{cases} \longrightarrow \text{EVALUATED}$$
@@ -577,6 +620,7 @@ $$\text{SCHEDULED} \longrightarrow \text{IN\_PROGRESS} \longrightarrow \begin{ca
 - **Atomic Locking**: When a student submits, a MongoDB atomic update transitions `status` from `IN_PROGRESS` to `SUBMITTED`. Subsequent answer modification requests are rejected.
 
 ### Rule LIVE-005: Idempotent Real-Time Autosave
+
 - The UI transmits student responses continuously via `POST /userResponse`.
 - The database operation must perform an idempotent `findOneAndUpdate` with `upsert: true` on `{ userId, testQuestionId }`:
   ```javascript
@@ -593,6 +637,7 @@ $$\text{SCHEDULED} \longrightarrow \text{IN\_PROGRESS} \longrightarrow \begin{ca
 - Governed by **Tier 3 DDoS Rate Limiter** (1 request per 2 seconds per session) to prevent client script loops from saturating database IOPS.
 
 ### Rule LIVE-006: Server-Side Grading Engine & Result Release Policy
+
 1. **Server-Side Evaluation**:
    - Compares candidate `selectedOptionIds` against canonical `Question.options.isCorrect`.
    - Supports:
@@ -604,6 +649,7 @@ $$\text{SCHEDULED} \longrightarrow \text{IN\_PROGRESS} \longrightarrow \begin{ca
    - **Formal University Exams (`MIDTERM`, `ENDTERM`, `QUIZ`)**: Scores, answer keys, and subject breakdowns are strictly withheld until `test.schedule.endTime` has passed globally, preventing early submitters from leaking questions to classmates.
 
 ### Rule LIVE-007: Student Explicit Save Progress & Checkpoint State
+
 - In addition to real-time response autosave, students are permitted to explicitly save their overall test progress via `POST /tests/:id/session/save-progress`.
 - The progress payload records:
   - `currentQuestionIndex`: Number representing the student's active question.
@@ -611,18 +657,115 @@ $$\text{SCHEDULED} \longrightarrow \text{IN\_PROGRESS} \longrightarrow \begin{ca
   - `timeSpent`: Cumulative seconds spent up to this checkpoint.
 - **State Recovery**: When a student resumes an active session on any authorized device, the response includes `currentQuestionIndex` and the persisted `paletteState`, allowing the frontend UI to reconstruct the exact exam position and navigation palette.
 
-### Rule LIVE-008: Strict Single-Session Concurrency Lock (Anti-Cheat Single Login)
-To eliminate proxy exam taking, credential sharing, and collaborative cheating:
-1. **Single Active Session Per User**:
-   - Every user account is restricted to exactly **one active authenticated session** at any time.
-   - The canonical `User` document records `activeSessionId: string` and `lastLoginAt: Date`.
-2. **Session Invalidation Protocol**:
-   - When a user logs in (`POST /users/login`), the server records the new session ID in `User.activeSessionId`.
-   - Any prior session belonging to that user is immediately revoked.
-   - Authentication middleware validates that `req.sessionID === user.activeSessionId`. If a discrepancy is detected, the request is terminated with `401 Unauthorized` (`CONCURRENT_LOGIN_TERMINATED`: *"Your account was logged in from another device. This session has been terminated."*).
-3. **Active Exam Concurrency Lockdown**:
-   - If a student has a test session with status `IN_PROGRESS`, secondary login attempts from a different IP or device are strictly blocked (`403 Forbidden` - `EXAM_IN_PROGRESS_LOCKED`), preventing another person from logging in and answering questions concurrently.
-   - The `TestSession` document permanently records `associatedSessionId: string`. If an answer submission arrives from any other session ID, the submission is rejected and a security audit alert is logged.
+### Rule LIVE-008: Atomic Session Preemption & Resilient Device Migration (Anti-Cheat Single Login)
+
+To simultaneously prevent collaborative cheating (two people taking the test concurrently) while **guaranteeing resilience for students whose connection drops, battery dies, or device crashes mid-test**:
+
+```
+[ Device A (Laptop Crashes / Drops Offline) ]               [ Device B (Friend / Lab Workstation) ]
+                     │                                                      │
+             (Drops Offline)                                                │
+                     │                                                      ▼
+                     │                                             POST /users/login
+                     │                                                      │
+                     │                                                      ▼
+                     │                                            Active Exam Detected!
+                     │                                            (IN_PROGRESS on Device A)
+                     │                                                      │
+                     │                                                      ▼
+                     │                                            [ ATOMIC SESSION TAKEOVER ]
+                     │                                            1. Instantly revoke sess_A
+                     │                                            2. Rebind TestSession to sess_B
+                     │                                            3. Append migration audit entry
+                     │                                                      │
+                     │                                                      ▼
+                     │                                             HTTP 200 OK (Login successful)
+                     │                                             activeSessionId = "sess_B"
+                     │                                                      │
+                     │                                                      ▼
+                     │                                             GET /tests/:id/session
+                     │                                             - Exact question/option sequence
+                     │                                             - Exact remaining time clock
+                     │                                             - All previous answers intact!
+                     ▼                                                      │
+(If Device A wakes up and attempts submission)                              ▼
+POST /userResponse (with old sess_A)                               POST /userResponse (with sess_B)
+                     │                                                      │
+                     ▼                                                      ▼
+           HTTP 401 Unauthorized                                      HTTP 200 OK
+      (SESSION_REVOKED_BY_NEW_LOGIN)                               (Answer saved successfully)
+```
+
+#### Protocol Specification:
+
+1. **Single Active Session at Any Instant**:
+   - Exactly **one active authenticated session** is valid per user at any millisecond in time.
+   - The `User` collection records `activeSessionId: string` and `lastLoginAt: Date`.
+2. **Atomic Session Preemption (Takeover, Not Lockout)**:
+   - When a student's laptop crashes and they log in on a new device (`POST /users/login`), the server **does not block them**.
+   - Instead, the server performs an **atomic takeover**:
+     1. The previous session (`sess_A`) is instantly revoked in the server session store.
+     2. `User.activeSessionId` is reassigned to the new session (`sess_B`).
+     3. The active `TestSession` rebinds `associatedSessionId = "sess_B"`.
+     4. A migration audit record is appended to `TestSession.migrationHistory` (`fromSessionId`, `toSessionId`, `fromIp`, `toIp`, `migratedAt`).
+3. **Resilient Exam Resumption (Zero Work Lost)**:
+   - Device B calls `GET /tests/:id/session`.
+   - The student resumes immediately with:
+     - The **exact persisted question and option shuffle** they started with.
+     - The **exact server countdown time** remaining.
+     - All **previously autosaved answers** and the `currentQuestionIndex` checkpoint restored.
+4. **Displaced Device Lockout**:
+   - If Device A reconnects or tries to send answers, authentication middleware detects `sess_A !== user.activeSessionId` and terminates it with `401 Unauthorized` (`SESSION_REVOKED_BY_NEW_LOGIN`: _"Your session was transferred to another device. If this was not you, contact your proctor immediately."_).
+   - This eliminates the possibility of two people solving the test simultaneously.
+5. **Anti-Flapping & Audit Governance**:
+   - **Cooldown Gate**: A mandatory 30-second cooldown is enforced between successive device migrations to prevent script-based login ping-ponging.
+   - **Migration Limit**: A maximum of **3 device migrations** is allowed per exam attempt. Exceeding 3 migrations flags the session as `EXCESSIVE_MIGRATIONS` and requires a proctor/faculty unlock code.
+
+### Rule LIVE-009: Test Publishing & Student Enrollment Lifecycle
+
+To reconcile future-scheduled exams with advance enrollment and eliminate schema discrepancies between `TestSession` and `UserResponse`:
+
+1. **Separation of Master Test Window vs. Student Session Duration (Issue 1 Resolution)**:
+   - **Master Exam Window (`Test.schedule`)**: Governed by `startTime` (when the test opens globally) and `endTime` (when the test closes globally).
+   - **Student Enrollment Lifecycle (`TestSession`)**:
+     - When a student self-enrolls (`POST /tests/:id/enroll`) or is enrolled by faculty/admin (`POST /tests/:id/enroll-students`), the `TestSession` document is pre-created in `SCHEDULED` status with `enrolledAt = Date.now()`.
+     - `startedAt` and `expiresAt` are initialized to `null`. They **must not** default to `Date.now()` or be marked `immutable: true` at document creation, as doing so would prematurely lock the student's timer before the exam begins.
+     - When the student enters the exam during the master test window via `POST /tests/:id/start`, `status` transitions from `SCHEDULED` to `IN_PROGRESS`, setting `startedAt = Date.now()` and computing:
+       $$\text{expiresAt} = \min(\text{startedAt} + \text{test.duration} \times 60000, \text{test.schedule.endTime})$$
+2. **Unified Dual Question Identifier Mapping (Issue 2 Resolution)**:
+   - To eliminate impedance mismatch between `Question` (content bank), `TestQuestion` (test paper composition), and `UserResponse` (candidate answer record):
+   - `TestSession.shuffledQuestions` explicitly records both identifiers:
+     ```typescript
+     export interface IShuffledQuestion {
+       testQuestionId: Types.ObjectId; // References TestQuestion (for paletteState and UserResponse matching)
+       questionId: Types.ObjectId; // References Question (for question text and option content)
+       sequenceNumber: number; // 1-based shuffled position for this student
+       optionOrder: Array<Types.ObjectId>; // Shuffled option IDs for this student
+     }
+     ```
+   - Client applications receive `testQuestionId` and `questionId` in the session payload.
+   - Autosave operations (`POST /userResponse` or `POST /tests/:id/session/answer`) key directly on `testQuestionId`, perfectly matching `UserResponse.testQuestionId` and the `paletteState` map keys without requiring client-side translation.
+3. **Enrollment Discovery Gate**:
+   - Students querying `GET /tests/available` receive all active, published tests (`isPublished: true`, `isActive: true`) matching their `academicYear`.
+   - Each returned test includes an `isEnrolled: boolean` indicator and `sessionStatus` (`null`, `"SCHEDULED"`, `"IN_PROGRESS"`, `"SUBMITTED"`).
+
+### Rule LIVE-010: Post-Exam Review Protocol & Result Release Enforcement
+
+To provide an intuitive learning loop post-assessment while strictly preserving exam integrity:
+
+1. **Dedicated Tree Review Endpoint (`GET /tests/:id/session/review`)**:
+   - Rather than forcing multi-layered test papers into 2D flat views or reusing mutating live endpoints, post-test review is served via a dedicated endpoint: `GET /tests/:id/session/review`.
+   - **Contract Parity**: The response mirrors the JSON schema of `POST /tests/:id/start` 1:1, allowing client applications to reuse the exact same `TestScreen` / `TestInterface` component by toggling `isReviewMode: true`.
+   - **Payload Enrichment**:
+     - Preserves the student's unique persisted Fisher-Yates `shuffledQuestions` and `optionOrder`.
+     - Populates `isCorrect: boolean` and `explanation: string` for all options.
+     - Merges candidate choices (`studentSelectedOptionIds`, `studentStatus`, `timeSpent`) from `UserResponse`.
+     - Provides scorecard metrics (`score`, `percentage`, `passed`, `attemptedCount`, `correctCount`).
+2. **Result Release Security Gate**:
+   - **Practice / Mock Tests (`testType === 'MOCK'`)**: Review payload is released immediately upon submission (`status === 'SUBMITTED'`).
+   - **Formal University Exams (`MIDTERM`, `ENDTERM`, `QUIZ`)**: If `Date.now() < test.schedule.endTime`, access to `GET /tests/:id/session/review` is blocked with `403 Forbidden` (`RESULT_WITHHELD`), preventing students who finish early from leaking answer keys to classmates.
+3. **Session State Prerequisite**:
+   - Review is strictly forbidden for active or scheduled sessions. Any request for a session with `status === 'IN_PROGRESS'` or `status === 'SCHEDULED'` is rejected with `400 Bad Request` (`SESSION_NOT_SUBMITTED`).
 
 ---
 
@@ -646,7 +789,9 @@ All codebase implementations in `CBTMCQ` must be written in **Strict TypeScript*
 ```
 
 ### Rule TS-001: Strict TypeScript Mandate & Compiler Flags
+
 The project compiler configuration (`tsconfig.json`) must enforce the strictest type-checking tier:
+
 ```json
 {
   "compilerOptions": {
@@ -671,6 +816,7 @@ The project compiler configuration (`tsconfig.json`) must enforce the strictest 
 ```
 
 ### Rule TS-002: Zero-Any & Zero-Undefined Policy
+
 1. **Absolute Ban on `any`**:
    - The type keyword `any` is strictly prohibited across all variables, parameters, return types, interfaces, generics, and type assertions.
    - For unknown or dynamic data, use strongly typed generics, union types, or `unknown` narrowed with exhaustive type guards.
@@ -679,21 +825,24 @@ The project compiler configuration (`tsconfig.json`) must enforce the strictest 
    - Fields that might have no value must use an explicit class-level empty instance (Null Object Pattern) or an explicit `null` with strict handling.
 
 ### Rule TS-003: Primitive Default Minimum Initialization
+
 Every newly declared primitive variable or class field must be initialized immediately with its minimum standard default:
+
 - **`number`**: Initialized to `0`
 - **`string`**: Initialized to `""` (empty string)
 - **`boolean`**: Initialized to `false`
 - **`bigint`**: Initialized to `0n`
-Uninitialized variable declarations (e.g., `let x: number;`) are strictly forbidden.
+  Uninitialized variable declarations (e.g., `let x: number;`) are strictly forbidden.
 
 ### Rule TS-004: Non-Primitive Class Instantiation (Prohibition of Literal `[]` and `{}`)
+
 1. **Arrays and Lists**:
    - Instantiating arrays with the literal `[]` is forbidden in domain code.
    - Arrays and collections must be instantiated via class constructors:
      ```typescript
      // FORBIDDEN:
      const list = [];
-     
+
      // REQUIRED:
      const list: Array<Question> = new Array<Question>();
      // OR custom typed collection class:
@@ -705,13 +854,14 @@ Uninitialized variable declarations (e.g., `let x: number;`) are strictly forbid
      ```typescript
      // FORBIDDEN:
      const user = {};
-     
+
      // REQUIRED:
      const user: User = new User();
      const session: TestSession = TestSession.empty();
      ```
 
 ### Rule TS-005: Mandatory Class Member Functions (`BaseObject` Contract)
+
 Every class representing entities, value objects, request/response DTOs, or domain structures must inherit from or implement the canonical `BaseObject` contract:
 
 ```typescript
@@ -724,6 +874,7 @@ export interface IBaseObject<T> {
 ```
 
 #### Required Method Semantics:
+
 1. **`.toString(): string`**:
    - Must output a serialized string representing all field names and their current values.
    - Example output: `User{ id: "usr_1", username: "john", role: "STUDENT", academicYear: 1 }`.
@@ -752,6 +903,7 @@ Before any commit, pull request, or deployment, the codebase must pass **four no
 ```
 
 ### Gate 1: Typecheck Pass
+
 - **Requirement**: Full static type verification with zero type discrepancies, zero implicit any, and zero unhandled undefined types.
 - **Terminal Command**:
   ```bash
@@ -760,6 +912,7 @@ Before any commit, pull request, or deployment, the codebase must pass **four no
   ```
 
 ### Gate 2: Lint Pass (0 Errors & 0 Warnings)
+
 - **Requirement**: Zero ESLint violations with `--max-warnings 0`. Unused variables, unresolved imports, or any deviation from strict TypeScript rules will trigger immediate failure.
 - **Terminal Command**:
   ```bash
@@ -772,6 +925,7 @@ Before any commit, pull request, or deployment, the codebase must pass **four no
   ```
 
 ### Gate 3: Prettier Code Style Check
+
 - **Requirement**: All TypeScript, JavaScript, JSON, Markdown, and YAML files must conform exactly to project formatting rules (2-space indent, double quotes, no trailing commas).
 - **Terminal Command**:
   ```bash
@@ -784,6 +938,7 @@ Before any commit, pull request, or deployment, the codebase must pass **four no
   ```
 
 ### Gate 4: Build Pass (6 GB Memory Ceiling)
+
 - **Requirement**: Full compilation to JavaScript must complete without errors. To prevent runaway memory leaks or V8 garbage collector stalls during large builds, the Node process is hard-capped at **6 GB (6144 MB)** of heap memory.
 - **Terminal Command**:
   ```bash
@@ -792,7 +947,9 @@ Before any commit, pull request, or deployment, the codebase must pass **four no
   ```
 
 ### The Unified Gate Runner
+
 To verify all four gates sequentially in a single invocation before pushing code:
+
 ```bash
 npm run gates
 # Executes: npm run typecheck && npm run lint && npm run format:check && npm run build
