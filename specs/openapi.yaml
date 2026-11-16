@@ -1,0 +1,599 @@
+openapi: 3.1.0
+info:
+  title: CBTMCQ Backend API
+  version: 1.0.0
+  description: >
+    Spec-Driven Development (SDD) authoritative OpenAPI specification for CBTMCQ University Examination Platform.
+servers:
+  - url: http://localhost:5001
+    description: Local Development Server
+
+paths:
+  /api/hello:
+    get:
+      summary: Health check / ping
+      tags:
+        - System
+      responses:
+        '200': 
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Hello from backend!
+
+  /users/login:
+    post:
+      summary: Authenticate user session
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - role
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [ADMIN, FACULTY, STUDENT]
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Missing required fields
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Forbidden - active exam in progress on another device (concurrent login locked)
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+  /users/signup:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - name
+                - email
+                - password
+                - mobileNumber
+              properties:
+                username:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [ADMIN, FACULTY, STUDENT]
+                  default: STUDENT
+                academicYear:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                mobileNumber:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+        '400':
+          description: Validation error or duplicate username/email
+
+  /subjects:
+    post:
+      summary: Retrieve subjects (filtered by user academic year or query)
+      tags:
+        - Subjects
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                academicYear:
+                  type: integer
+                role:
+                  type: string
+      responses:
+        '200':
+          description: List of subjects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  subjects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subject'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden by RBAC
+
+  /subjects/addSubject:
+    post:
+      summary: Add a new subject (Faculty / Admin only)
+      tags:
+        - Subjects
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subjectCode
+                - subjectName
+                - academicYear
+                - createdBy
+              properties:
+                subjectCode:
+                  type: string
+                subjectName:
+                  type: string
+                description:
+                  type: string
+                academicYear:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                credits:
+                  type: number
+                  default: 4
+                createdBy:
+                  type: string
+      responses:
+        '201':
+          description: Subject created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  subject:
+                    $ref: '#/components/schemas/Subject'
+        '400':
+          description: Missing required fields or duplicate subjectCode
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden by RBAC
+
+  /tests/{id}/start:
+    post:
+      summary: Initialize or resume an active time-locked live test session
+      tags:
+        - Live Test Engine
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Test ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test session started or resumed. Questions delivered in zero-knowledge shuffled format.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  sessionId:
+                    type: string
+                  startedAt:
+                    type: string
+                    format: date-time
+                  expiresAt:
+                    type: string
+                    format: date-time
+                  remainingSeconds:
+                    type: integer
+                    example: 3600
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        questionId:
+                          type: string
+                        sequenceNumber:
+                          type: integer
+                        questionText:
+                          type: string
+                        questionType:
+                          type: string
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              _id:
+                                type: string
+                              text:
+                                type: string
+        '400':
+          description: Test window is not active or user is ineligible
+        '401':
+          description: Unauthorized
+        '403':
+          description: Session already submitted or forbidden by RBAC
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+  /tests/{id}/session/sync:
+    get:
+      summary: Retrieve server-authoritative clock and session status
+      tags:
+        - Live Test Engine
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Test ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Server time sync payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverTime:
+                    type: string
+                    format: date-time
+                  remainingSeconds:
+                    type: integer
+                  status:
+                    type: string
+                    enum: [IN_PROGRESS, SUBMITTED, TIMED_OUT]
+        '401':
+          description: Unauthorized
+        '404':
+          description: Active session not found
+
+  /tests/{id}/session/save-progress:
+    post:
+      summary: Explicitly checkpoint and save candidate test progress (current question & palette state)
+      tags:
+        - Live Test Engine
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Test ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentQuestionIndex
+              properties:
+                currentQuestionIndex:
+                  type: integer
+                  minimum: 0
+                paletteState:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    enum: [ATTEMPTED, UNATTEMPTED, MARKED_REVIEW]
+                timeSpent:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Progress saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  lastSavedAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid question index or payload
+        '401':
+          description: Unauthorized
+        '403':
+          description: Session is no longer active
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+  /tests/{id}/submit:
+    post:
+      summary: Atomically submit exam, lock session, and trigger server-side evaluation
+      tags:
+        - Live Test Engine
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Test ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test submitted and graded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Test submitted successfully
+                  status:
+                    type: string
+                    example: SUBMITTED
+                  resultWithheldUntil:
+                    type: string
+                    format: date-time
+                    description: If formal exam, score release timestamp
+        '400':
+          description: Session already submitted or expired
+        '401':
+          description: Unauthorized
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+  /views/{viewName}:
+    get:
+      summary: Query a composite flat schema read view (denormalized cross-entity data)
+      tags:
+        - Views
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: viewName
+          in: path
+          required: true
+          description: Canonical registered view name (e.g., student-results, test-sessions)
+          schema:
+            type: string
+            enum: [student-results, test-sessions, question-bank-overview, exam-monitoring]
+        - name: select
+          in: query
+          required: false
+          description: Comma-separated list of whitelisted fields to project
+          schema:
+            type: string
+            example: studentName,testName,score,subjectCode
+        - name: orderBy
+          in: query
+          required: false
+          description: Sort field and direction in field:direction format
+          schema:
+            type: string
+            example: score:desc
+        - name: limit
+          in: query
+          required: false
+          description: Number of records to return (max 100)
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: page
+          in: query
+          required: false
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+      responses:
+        '200':
+          description: Flat JSON records retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  view:
+                    type: string
+                    example: student-results
+                  count:
+                    type: integer
+                    example: 10
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        '400':
+          description: Invalid query parameters or unwhitelisted field in select/orderBy
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden by RBAC
+        '429':
+          $ref: '#/components/responses/TooManyRequestsError'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+
+  headers:
+    Retry-After:
+      description: The number of seconds the client should wait before making further requests
+      schema:
+        type: integer
+    RateLimit-Limit:
+      description: The maximum number of requests allowed in the current time window
+      schema:
+        type: integer
+    RateLimit-Remaining:
+      description: The number of requests remaining in the current time window
+      schema:
+        type: integer
+    RateLimit-Reset:
+      description: The time at which the current rate limit window resets in UTC epoch seconds
+      schema:
+        type: integer
+
+  responses:
+    TooManyRequestsError:
+      description: Rate limit exceeded (DDoS perimeter gate triggered)
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/Retry-After'
+        RateLimit-Limit:
+          $ref: '#/components/headers/RateLimit-Limit'
+        RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimit-Remaining'
+        RateLimit-Reset:
+          $ref: '#/components/headers/RateLimit-Reset'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    PayloadTooLargeError:
+      description: Request payload exceeds the 50kb buffer size limit
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Too many requests from this IP. Please try again after 15 minutes.
+        error:
+          type: string
+          example: RATE_LIMIT_EXCEEDED
+        details:
+          type: array
+          items:
+            type: string
+
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, FACULTY, STUDENT]
+        academicYear:
+          type: integer
+        mobileNumber:
+          type: string
+        activeSessionId:
+          type: string
+          nullable: true
+          description: Current active session ID enforcing single-login concurrency
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Subject:
+      type: object
+      properties:
+        _id:
+          type: string
+        subjectCode:
+          type: string
+        subjectName:
+          type: string
+        description:
+          type: string
+        academicYear:
+          type: integer
+        credits:
+          type: number
+        createdBy:
+          type: string
+        isActive:
+          type: boolean

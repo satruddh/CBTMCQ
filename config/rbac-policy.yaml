@@ -1,0 +1,63 @@
+# CBTMCQ Declarative Role-Based Access Control (RBAC) Policy
+# Enforced by middlewares/rbacGuard.js across all incoming API requests
+version: "1.0"
+default_policy: "DENY" # Fail-closed security architecture
+
+roles:
+  - ADMIN
+  - FACULTY
+  - STUDENT
+  - PUBLIC
+
+# Public endpoints accessible without authentication
+public_routes:
+  - path: "^/users/login$"
+    methods: ["POST"]
+  - path: "^/users/signup$"
+    methods: ["POST"]
+  - path: "^/api/hello$"
+    methods: ["GET"]
+
+# Role-specific permissions
+permissions:
+  STUDENT:
+    allow:
+      - path: "^/sessions(/.*)?$"
+        methods: ["GET", "POST"]
+      - path: "^/users/profile$"
+        methods: ["GET"]
+      - path: "^/subjects$"
+        methods: ["GET", "POST"]
+      - path: "^/subjects/[a-fA-F0-9]+$"
+        methods: ["GET"]
+      - path: "^/tests/[a-fA-F0-9]+/start$"
+        methods: ["POST"]
+      - path: "^/tests/[a-fA-F0-9]+/session(/.*)?$"
+        methods: ["GET", "POST"]
+      - path: "^/tests/[a-fA-F0-9]+/submit$"
+        methods: ["POST"]
+      - path: "^/tests/results(/.*)?$"
+        methods: ["GET"]
+      - path: "^/userResponse(/.*)?$"
+        methods: ["GET", "POST"]
+      - path: "^/views(/.*)?$"
+        methods: ["GET"]
+
+  FACULTY:
+    inherits: ["STUDENT"]
+    allow:
+      - path: "^/subjects/addSubject$"
+        methods: ["POST"]
+      - path: "^/subjects/[a-fA-F0-9]+/edit$"
+        methods: ["PUT", "PATCH"]
+      - path: "^/questions(/.*)?$"
+        methods: ["GET", "POST", "PUT", "DELETE"]
+      - path: "^/tests(/.*)?$"
+        methods: ["GET", "POST", "PUT", "DELETE"]
+      - path: "^/testQues(/.*)?$"
+        methods: ["GET", "POST", "DELETE"]
+
+  ADMIN:
+    allow:
+      - path: ".*"
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]

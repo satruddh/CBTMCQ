@@ -1,0 +1,61 @@
+# CBTMCQ Declarative DDoS, Rate Limiting & Throttling Policy
+# Loaded and enforced by middlewares/ddosGate.js at the application perimeter
+version: "1.0"
+
+# Reverse proxy setting
+proxy:
+  trust_proxy: 1 # Number of reverse proxy hops to trust (Cloudflare / Nginx / ALB)
+
+# Global Server Timeouts (Slowloris Prevention)
+timeouts:
+  headers_timeout_ms: 10000   # 10 seconds to receive headers
+  request_timeout_ms: 20000   # 20 seconds max request execution
+  keep_alive_timeout_ms: 5000 # 5 seconds keep-alive idle cap
+
+# Body Parser Caps (Buffer Overflow & Memory Exhaustion Prevention)
+payload_limits:
+  json_body_limit: "50kb"
+  urlencoded_body_limit: "50kb"
+
+# Multi-Tier Rate Limiting Rules
+rate_limiting:
+  # Tier 1: Global Perimeter Rate Limiter (Default for all endpoints)
+  tier_1_global:
+    window_ms: 900000 # 15 minutes
+    max_requests: 300
+    message: "Too many requests from this IP. Please try again after 15 minutes."
+    standard_headers: true
+    legacy_headers: false
+
+  # Tier 2: Authentication & Sensitive Endpoint Limiter (Brute-Force & Flooding Defense)
+  tier_2_auth:
+    window_ms: 900000 # 15 minutes
+    max_requests: 10
+    message: "Too many login/registration attempts from this IP. Please try again after 15 minutes."
+    standard_headers: true
+    legacy_headers: false
+    endpoints:
+      - path: "^/users/login$"
+        methods: ["POST"]
+      - path: "^/users/signup$"
+        methods: ["POST"]
+
+  # Tier 3: Exam Submission & Autosave Limiter (Burst / Resource Contention Defense)
+  tier_3_exam_submission:
+    window_ms: 10000 # 10 seconds
+    max_requests: 5  # Allow max 1 request every 2s on average
+    message: "Answer submission frequency limit exceeded. Please wait a moment before sending again."
+    standard_headers: true
+    legacy_headers: false
+    endpoints:
+      - path: "^/userResponse(/.*)?$"
+        methods: ["POST", "PUT"]
+      - path: "^/tests/[a-fA-F0-9]+/submit$"
+        methods: ["POST"]
+
+# Database Query Safety Constraints
+database_guards:
+  max_query_limit: 100 # Maximum allowed page size in any list endpoint
+  max_pool_size: 50    # Maximum concurrent Mongoose pool connections
+  min_pool_size: 5     # Minimum warm connections
+  server_selection_timeout_ms: 5000
